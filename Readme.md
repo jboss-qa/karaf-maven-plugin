@@ -6,7 +6,7 @@ Usage
 ### karaf:execute
 
 #### Full name:
-`org.jboss.soa:karaf-maven-plugin:0.0.1-SNAPSHOT:execute`
+`org.jboss.soa:karaf-maven-plugin:1.0.0-SNAPSHOT:execute`
 
 #### Description:
 This maven plugin can execute OSGi commands via ssh client.
@@ -30,7 +30,7 @@ This maven plugin can execute OSGi commands via ssh client.
 <plugin>
     <groupId>org.jboss.soa</groupId>
 	<artifactId>karaf-maven-plugin</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 	<configuration>
 		<commands>
 			<param>features:install -v switchyard-bean</param>

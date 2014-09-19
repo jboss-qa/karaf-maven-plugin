@@ -83,17 +83,21 @@ public class KarafClientMojo extends AbstractMojo {
 	@Parameter(property = "execute.attempts", defaultValue = "2")
 	private int delay;
 
+	/**
+	 * List with OSGi commands.
+	 */
+	@Parameter(property = "execute.commands")
+	private String[] commands;
+
 	private static final String NEW_LINE = System.getProperty("line.separator");
 
 	private static final String ERR_MSG = "Error executing command";
 
-	/**
-	 * List with OSGi commands.
-	 */
-	@Parameter(property = "execute.commands", required = true)
-	private String[] commands;
-
 	public void execute() throws MojoExecutionException {
+		if (commands == null || commands.length == 0) {
+			getLog().warn("No OSGi command was specified");
+			return;
+		}
 		final StringBuilder sb = new StringBuilder();
 		for (String cmd : commands) {
 			sb.append(cmd).append(NEW_LINE);

@@ -83,6 +83,8 @@ public class KarafClientMojo extends AbstractMojo {
 	@Parameter(property = "execute.attempts", defaultValue = "2")
 	private int delay;
 
+	private static final String NEW_LINE = System.getProperty("line.separator");
+
 	private static final String ERR_MSG = "Error executing command";
 
 	/**
@@ -94,7 +96,7 @@ public class KarafClientMojo extends AbstractMojo {
 	public void execute() throws MojoExecutionException {
 		final StringBuilder sb = new StringBuilder();
 		for (String cmd : commands) {
-			sb.append(cmd).append("\n");
+			sb.append(cmd).append(NEW_LINE);
 		}
 		execute(sb.toString());
 	}
@@ -141,7 +143,7 @@ public class KarafClientMojo extends AbstractMojo {
 				}
 			}
 			ClientChannel channel;
-			channel = session.createChannel("exec", cmd.concat("\n").toString());
+			channel = session.createChannel("exec", cmd.concat(NEW_LINE));
 			channel.setIn(new ByteArrayInputStream(new byte[0]));
 			final ByteArrayOutputStream sout = new ByteArrayOutputStream();
 			final ByteArrayOutputStream serr = new ByteArrayOutputStream();
@@ -160,8 +162,8 @@ public class KarafClientMojo extends AbstractMojo {
 			isError |= sout.toString().contains(ERR_MSG); // TODO(mbasovni): Delete when possible
 			if (isError) {
 				final int fromIndex = sout.toString().indexOf(ERR_MSG);
-				final int toIndex = sout.toString().lastIndexOf("\n");
-				throw new MojoExecutionException("\n" + sout.toString().substring(fromIndex, toIndex));
+				final int toIndex = sout.toString().lastIndexOf(NEW_LINE);
+				throw new MojoExecutionException(NEW_LINE + sout.toString().substring(fromIndex, toIndex));
 			}
 		} catch (MojoExecutionException e) {
 			throw e;

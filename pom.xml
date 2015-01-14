@@ -18,7 +18,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.jboss.soa</groupId>
+	<groupId>org.jboss.qa</groupId>
 	<artifactId>karaf-maven-plugin</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<packaging>maven-plugin</packaging>
@@ -27,10 +27,11 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<plexus.utils.version>3.0.8</plexus.utils.version>
+		<plexus.utils.version>3.0.21</plexus.utils.version>
 		<jline.version>2.12</jline.version>
 		<sshd.version>0.12.0</sshd.version>
-		<karaf.version>2.3.6</karaf.version>
+		<karaf.version>4.0.0.M1</karaf.version>
+		<version.java>1.7</version.java>
 	</properties>
 
 	<dependencies>
@@ -65,10 +66,23 @@
 			<artifactId>org.apache.karaf.shell.console</artifactId>
 			<version>${karaf.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.karaf</groupId>
+			<artifactId>org.apache.karaf.client</artifactId>
+			<version>${karaf.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.2</version>
+				<configuration>
+					<source>${version.java}</source>
+					<target>${version.java}</target>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-plugin-plugin</artifactId>

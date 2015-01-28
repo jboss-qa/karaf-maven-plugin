@@ -113,6 +113,7 @@ public class KarafClientMojo extends AbstractMojo {
 
 	private static final String NEW_LINE = System.getProperty("line.separator");
 
+	@Override
 	public void execute() throws MojoExecutionException {
 		// Add commands from scripts to already declared commands
 		for (File script : scripts) {
@@ -135,8 +136,8 @@ public class KarafClientMojo extends AbstractMojo {
 			return;
 		}
 
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw, true);
+		final StringWriter sw = new StringWriter();
+		final PrintWriter pw = new PrintWriter(sw, true);
 		for (String cmd : commands) {
 			getLog().info(cmd);
 			pw.println(cmd);
@@ -144,6 +145,12 @@ public class KarafClientMojo extends AbstractMojo {
 		execute(sw.toString());
 	}
 
+	/**
+	 * Executes karaf command.
+	 *
+	 * @param cmd a karaf command to execute
+	 * @throws MojoExecutionException if plugin execution fails
+	 */
 	protected void execute(String cmd) throws MojoExecutionException {
 		SshClient client = null;
 		try {
@@ -158,7 +165,7 @@ public class KarafClientMojo extends AbstractMojo {
 
 				public String[] interactive(String destination, String name, String instruction, String[] prompt,
 						boolean[] echo) {
-					String[] answers = new String[prompt.length];
+					final String[] answers = new String[prompt.length];
 					try {
 						for (int i = 0; i < prompt.length; i++) {
 							if (console != null) {
@@ -170,6 +177,7 @@ public class KarafClientMojo extends AbstractMojo {
 							}
 						}
 					} catch (IOError e) {
+						getLog().warn(e);
 					}
 					return answers;
 				}
@@ -178,7 +186,7 @@ public class KarafClientMojo extends AbstractMojo {
 			if (console != null) {
 				console.printf("Logging in as %s\n", user);
 			}
-			ClientSession session = connect(client);
+			final ClientSession session = connect(client);
 			if (password != null) {
 				session.addPasswordIdentity(password);
 			}
@@ -198,7 +206,7 @@ public class KarafClientMojo extends AbstractMojo {
 			serr.writeTo(System.err);
 
 			// Expects issue KARAF-2623 is fixed
-			boolean isError = (channel.getExitStatus() != null && channel.getExitStatus().intValue() != 0);
+			final boolean isError = (channel.getExitStatus() != null && channel.getExitStatus().intValue() != 0);
 			if (isError) {
 				final String errorMarker = Ansi.ansi().fg(Color.RED).toString();
 				final int fromIndex = sout.toString().indexOf(errorMarker) + errorMarker.length();
@@ -219,22 +227,22 @@ public class KarafClientMojo extends AbstractMojo {
 	}
 
 	private void setupAgent(String user, File keyFile, SshClient client) {
-		URL builtInPrivateKey = KarafClientMojo.class.getClassLoader().getResource("karaf.key");
-		SshAgent agent = startAgent(user, builtInPrivateKey, keyFile);
+		final URL builtInPrivateKey = KarafClientMojo.class.getClassLoader().getResource("karaf.key");
+		final SshAgent agent = startAgent(user, builtInPrivateKey, keyFile);
 		client.setAgentFactory(new LocalAgentFactory(agent));
 		client.getProperties().put(SshAgent.SSH_AUTHSOCKET_ENV_NAME, "local");
 	}
 
 	private SshAgent startAgent(String user, URL privateKeyUrl, File keyFile) {
-		try (InputStream is = privateKeyUrl.openStream()){
-			SshAgent agent = new AgentImpl();
-			ObjectInputStream r = new ObjectInputStream(is);
-			KeyPair keyPair = (KeyPair) r.readObject();
+		try (InputStream is = privateKeyUrl.openStream()) {
+			final SshAgent agent = new AgentImpl();
+			final ObjectInputStream r = new ObjectInputStream(is);
+			final KeyPair keyPair = (KeyPair) r.readObject();
 			is.close();
 			agent.addIdentity(keyPair, user);
 			if (keyFile != null) {
-				String[] keyFiles = new String[] {keyFile.getAbsolutePath()};
-				FileKeyPairProvider fileKeyPairProvider = new FileKeyPairProvider(keyFiles);
+				final String[] keyFiles = new String[] {keyFile.getAbsolutePath()};
+				final FileKeyPairProvider fileKeyPairProvider = new FileKeyPairProvider(keyFiles);
 				for (KeyPair key : fileKeyPairProvider.loadKeys()) {
 					agent.addIdentity(key, user);
 				}

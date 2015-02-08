@@ -90,7 +90,7 @@ public class KarafClientMojo extends AbstractMojo {
 	/**
 	 * Intra-retry delay.
 	 */
-	@Parameter(property = "client.attempts", defaultValue = "2")
+	@Parameter(property = "client.delay", defaultValue = "2")
 	private int delay;
 
 	/**

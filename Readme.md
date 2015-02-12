@@ -6,7 +6,7 @@ Usage
 ### karaf:client
 
 #### Full name:
-`org.jboss.qa:karaf-maven-plugin:1.0.0-SNAPSHOT:client`
+`org.jboss.qa:karaf-maven-plugin:1.1.0-SNAPSHOT:client`
 
 #### Description:
 This maven plugin can execute OSGi commands via ssh client.
@@ -24,6 +24,7 @@ This maven plugin can execute OSGi commands via ssh client.
 | commands  | `List<String>` | OSGi commands. \* |
 | scripts   | `List<File>`   | Scripts with OSGi commands. \* |
 | keyFile   | `File`         | KeyFile location when using key login. \*\* |
+| skip      | `boolean`      | Skip execution. <br />**Default:** false|
 
 - \* Both parameters **commands** and **scripts** can be mixed.
 - \*\* Need have BouncyCastle registered as security provider using this flag.

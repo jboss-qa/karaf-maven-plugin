@@ -111,10 +111,22 @@ public class KarafClientMojo extends AbstractMojo {
 	@Parameter(property = "client.keyFile")
 	private File keyFile;
 
+	/**
+	 * Skip execution.
+	 *
+	 * @since 1.1
+	 */
+	@Parameter(property = "client.skip", defaultValue = "false")
+	private boolean skip;
+
 	private static final String NEW_LINE = System.getProperty("line.separator");
 
 	@Override
 	public void execute() throws MojoExecutionException {
+		if (skip == true) {
+			getLog().info("Execution is skipped");
+			return;
+		}
 		// Add commands from scripts to already declared commands
 		for (File script : scripts) {
 			try (BufferedReader br = new BufferedReader(new FileReader(script))) {

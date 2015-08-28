@@ -30,8 +30,8 @@ import org.apache.sshd.client.future.ConnectFuture;
 import org.apache.sshd.common.RuntimeSshException;
 import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 
-import org.fusesource.jansi.Ansi;
-import org.fusesource.jansi.Ansi.Color;
+import org.jboss.qa.util.AnsiMarkerUtil;
+
 import org.fusesource.jansi.AnsiConsole;
 
 import java.io.BufferedReader;
@@ -220,10 +220,7 @@ public class KarafClientMojo extends AbstractMojo {
 			// Expects issue KARAF-2623 is fixed
 			final boolean isError = (channel.getExitStatus() != null && channel.getExitStatus().intValue() != 0);
 			if (isError) {
-				final String errorMarker = Ansi.ansi().fg(Color.RED).toString();
-				final int fromIndex = sout.toString().indexOf(errorMarker) + errorMarker.length();
-				final int toIndex = sout.toString().lastIndexOf(Ansi.ansi().fg(Color.DEFAULT).toString());
-				throw new MojoExecutionException(NEW_LINE + sout.toString().substring(fromIndex, toIndex));
+				throw new MojoExecutionException(NEW_LINE + AnsiMarkerUtil.removeErrorMarker(sout.toString()));
 			}
 		} catch (MojoExecutionException e) {
 			throw e;

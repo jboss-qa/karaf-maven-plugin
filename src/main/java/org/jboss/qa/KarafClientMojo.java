@@ -19,17 +19,22 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sshd.ClientChannel;
-import org.apache.sshd.ClientSession;
-import org.apache.sshd.SshClient;
+
 import org.apache.sshd.agent.SshAgent;
 import org.apache.sshd.agent.local.AgentImpl;
 import org.apache.sshd.agent.local.LocalAgentFactory;
-import org.apache.sshd.client.UserInteraction;
-import org.apache.sshd.client.future.ConnectFuture;
-import org.apache.sshd.common.RuntimeSshException;
-import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 
+import org.apache.sshd.client.SshClient;
+import org.apache.sshd.client.auth.keyboard.UserInteraction;
+import org.apache.sshd.client.channel.ClientChannel;
+import org.apache.sshd.client.channel.ClientChannelEvent;
+import org.apache.sshd.client.future.ConnectFuture;
+import org.apache.sshd.client.session.ClientSession;
+import org.apache.sshd.common.RuntimeSshException;
+
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.Ansi.Color;
 import org.fusesource.jansi.AnsiConsole;
@@ -39,15 +44,19 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Console;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.io.StringWriter;
 import java.net.URL;
 import java.security.KeyPair;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -171,13 +180,27 @@ public class KarafClientMojo extends AbstractMojo {
 			setupAgent(user, keyFile, client);
 
 			client.setUserInteraction(new UserInteraction() {
-				public void welcome(String banner) {
+				@Override
+				public boolean isInteractionAllowed(ClientSession clientSession) {
+					return true;
+				}
+
+				@Override
+				public void serverVersionInfo(ClientSession clientSession, List<String> list) {
+
+				}
+
+				@Override
+				public String getUpdatedPassword(ClientSession session, String prompt, String lang) {
+					return password;
+				}
+
+				public void welcome(ClientSession session, String banner, String lang) {
 					console.printf(banner);
 				}
 
-				public String[] interactive(String destination, String name, String instruction, String[] prompt,
-						boolean[] echo) {
-					final String[] answers = new String[prompt.length];
+				public String[] interactive(ClientSession session, String name, String instruction, String lang, String[] prompt, boolean[] echo) {
+					String[] answers = new String[prompt.length];
 					try {
 						for (int i = 0; i < prompt.length; i++) {
 							if (console != null) {
@@ -189,7 +212,6 @@ public class KarafClientMojo extends AbstractMojo {
 							}
 						}
 					} catch (IOError e) {
-						getLog().warn(e);
 					}
 					return answers;
 				}
@@ -212,7 +234,7 @@ public class KarafClientMojo extends AbstractMojo {
 			channel.setOut(AnsiConsole.wrapOutputStream(sout));
 			channel.setErr(AnsiConsole.wrapOutputStream(serr));
 			channel.open();
-			channel.waitFor(ClientChannel.CLOSED, 0);
+			channel.waitFor(Arrays.asList(ClientChannelEvent.CLOSED), 0);
 
 			sout.writeTo(System.out);
 			serr.writeTo(System.err);
@@ -253,11 +275,26 @@ public class KarafClientMojo extends AbstractMojo {
 			is.close();
 			agent.addIdentity(keyPair, user);
 			if (keyFile != null) {
-				final String[] keyFiles = new String[] {keyFile.getAbsolutePath()};
-				final FileKeyPairProvider fileKeyPairProvider = new FileKeyPairProvider(keyFiles);
-				for (KeyPair key : fileKeyPairProvider.loadKeys()) {
-					agent.addIdentity(key, user);
+				KeyPair kp = null;
+				try (Reader reader = new InputStreamReader(new FileInputStream(keyFile))) {
+
+					try (PEMParser parser = new PEMParser(reader)) {
+						Object o = parser.readObject();
+
+						JcaPEMKeyConverter pemConverter = new JcaPEMKeyConverter();
+						pemConverter.setProvider("BC");
+
+						if (o instanceof PEMKeyPair) {
+							o = pemConverter.getKeyPair((PEMKeyPair) o);
+							kp = (KeyPair) o;
+						} else if (o instanceof KeyPair) {
+							kp = (KeyPair) o;
+						}
+					}
+				} catch (Exception e) {
+					getLog().warn("Unable to read key " + keyFile.getName(), e);
 				}
+				agent.addIdentity(kp, user);
 			}
 			return agent;
 		} catch (Throwable e) {

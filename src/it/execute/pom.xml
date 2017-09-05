@@ -36,12 +36,13 @@
 						<id>setup-karaf</id>
 						<phase>pre-integration-test</phase>
 						<goals>
-							<goal>execute</goal>
+							<goal>client</goal>
 						</goals>
 						<configuration>
+							<strictHostKeyChecking>no</strictHostKeyChecking>
 							<commands>
-								<param>osgi:list</param>
-								<param>features:list -i</param>
+								<command>osgi:list</command>
+								<command>features:list -i</command>
 							</commands>
 						</configuration>
 					</execution>

@@ -27,10 +27,8 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<plexus.utils.version>3.0.21</plexus.utils.version>
+		<version.jsch>0.1.54</version.jsch>
 		<jline.version>2.12</jline.version>
-		<sshd.version>0.12.0</sshd.version>
-		<karaf.version>4.0.0.M1</karaf.version>
 		<version.java>1.7</version.java>
 	</properties>
 
@@ -38,18 +36,13 @@
 		<dependency>
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-plugin-api</artifactId>
-			<version>2.0</version>
+			<version>3.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.maven.plugin-tools</groupId>
 			<artifactId>maven-plugin-annotations</artifactId>
-			<version>3.2</version>
+			<version>3.5</version>
 			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.plexus</groupId>
-			<artifactId>plexus-utils</artifactId>
-			<version>${plexus.utils.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>jline</groupId>
@@ -57,19 +50,9 @@
 			<version>${jline.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.sshd</groupId>
-			<artifactId>sshd-core</artifactId>
-			<version>${sshd.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.karaf.shell</groupId>
-			<artifactId>org.apache.karaf.shell.console</artifactId>
-			<version>${karaf.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.karaf</groupId>
-			<artifactId>org.apache.karaf.client</artifactId>
-			<version>${karaf.version}</version>
+			<groupId>com.jcraft</groupId>
+			<artifactId>jsch</artifactId>
+			<version>${version.jsch}</version>
 		</dependency>
 	</dependencies>
 

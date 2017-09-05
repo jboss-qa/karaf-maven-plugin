@@ -19,40 +19,30 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sshd.ClientChannel;
-import org.apache.sshd.ClientSession;
-import org.apache.sshd.SshClient;
-import org.apache.sshd.agent.SshAgent;
-import org.apache.sshd.agent.local.AgentImpl;
-import org.apache.sshd.agent.local.LocalAgentFactory;
-import org.apache.sshd.client.UserInteraction;
-import org.apache.sshd.client.future.ConnectFuture;
-import org.apache.sshd.common.RuntimeSshException;
-import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 
 import org.fusesource.jansi.Ansi;
-import org.fusesource.jansi.Ansi.Color;
 import org.fusesource.jansi.AnsiConsole;
 
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Console;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.URL;
-import java.security.KeyPair;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Karaf client.
+ *
  * @author Martin Basovník
  */
 @Mojo(name = "client")
@@ -112,6 +102,12 @@ public class KarafClientMojo extends AbstractMojo {
 	private File keyFile;
 
 	/**
+	 * Use strict host key checking.
+	 */
+	@Parameter(property = "client.strictHostKeyChecking", defaultValue = "yes")
+	private String strictHostKeyChecking;
+
+	/**
 	 * Skip execution.
 	 *
 	 * @since 1.1
@@ -120,6 +116,7 @@ public class KarafClientMojo extends AbstractMojo {
 	private boolean skip;
 
 	private static final String NEW_LINE = System.getProperty("line.separator");
+	private Session session = null;
 
 	@Override
 	public void execute() throws MojoExecutionException {
@@ -147,6 +144,11 @@ public class KarafClientMojo extends AbstractMojo {
 			getLog().warn("No OSGi command was specified");
 			return;
 		}
+		try {
+			session = connect();
+		} catch (Exception ex) {
+			getLog().error("Can't connect to karaf host.", ex);
+		}
 
 		final StringWriter sw = new StringWriter();
 		final PrintWriter pw = new PrintWriter(sw, true);
@@ -154,7 +156,13 @@ public class KarafClientMojo extends AbstractMojo {
 			getLog().info(cmd);
 			pw.println(cmd);
 		}
-		execute(sw.toString());
+		try {
+			execute(sw.toString());
+		} catch (Exception e) {
+			getLog().warn(e);
+		}
+
+		session.disconnect();
 	}
 
 	/**
@@ -163,118 +171,72 @@ public class KarafClientMojo extends AbstractMojo {
 	 * @param cmd a karaf command to execute
 	 * @throws MojoExecutionException if plugin execution fails
 	 */
-	protected void execute(String cmd) throws MojoExecutionException {
-		SshClient client = null;
-		try {
-			final Console console = System.console();
-			client = SshClient.setUpDefaultClient();
-			setupAgent(user, keyFile, client);
+	protected void execute(String cmd) throws MojoExecutionException, JSchException, IOException {
+		final Console console = System.console();
 
-			client.setUserInteraction(new UserInteraction() {
-				public void welcome(String banner) {
-					console.printf(banner);
-				}
+		ChannelExec channel = (ChannelExec) session.openChannel("exec");
 
-				public String[] interactive(String destination, String name, String instruction, String[] prompt,
-						boolean[] echo) {
-					final String[] answers = new String[prompt.length];
-					try {
-						for (int i = 0; i < prompt.length; i++) {
-							if (console != null) {
-								if (echo[i]) {
-									answers[i] = console.readLine(prompt[i] + " ");
-								} else {
-									answers[i] = new String(console.readPassword(prompt[i] + " "));
-								}
-							}
-						}
-					} catch (IOError e) {
-						getLog().warn(e);
-					}
-					return answers;
-				}
-			});
-			client.start();
-			if (console != null) {
-				console.printf("Logging in as %s\n", user);
-			}
-			final ClientSession session = connect(client);
-			if (password != null) {
-				session.addPasswordIdentity(password);
-			}
-			session.auth().verify();
+		final ByteArrayOutputStream sout = new ByteArrayOutputStream();
+		final ByteArrayOutputStream serr = new ByteArrayOutputStream();
+		channel.setOutputStream(AnsiConsole.wrapOutputStream(sout));
+		channel.setErrStream(AnsiConsole.wrapOutputStream(serr));
 
-			ClientChannel channel;
-			channel = session.createChannel("exec", cmd.concat(NEW_LINE));
-			channel.setIn(new ByteArrayInputStream(new byte[0]));
-			final ByteArrayOutputStream sout = new ByteArrayOutputStream();
-			final ByteArrayOutputStream serr = new ByteArrayOutputStream();
-			channel.setOut(AnsiConsole.wrapOutputStream(sout));
-			channel.setErr(AnsiConsole.wrapOutputStream(serr));
-			channel.open();
-			channel.waitFor(ClientChannel.CLOSED, 0);
+		channel.setCommand(cmd.concat(NEW_LINE));
+		channel.connect();
+		channel.start();
 
-			sout.writeTo(System.out);
-			serr.writeTo(System.err);
-
-			// Expects issue KARAF-2623 is fixed
-			final boolean isError = (channel.getExitStatus() != null && channel.getExitStatus().intValue() != 0);
-			if (isError) {
-				final String errorMarker = Ansi.ansi().fg(Color.RED).toString();
-				final int fromIndex = sout.toString().indexOf(errorMarker) + errorMarker.length();
-				final int toIndex = sout.toString().lastIndexOf(Ansi.ansi().fg(Color.DEFAULT).toString());
-				throw new MojoExecutionException(NEW_LINE + sout.toString().substring(fromIndex, toIndex));
-			}
-		} catch (MojoExecutionException e) {
-			throw e;
-		} catch (Throwable t) {
-			throw new MojoExecutionException(t, t.getMessage(), t.toString());
-		} finally {
+		while(!channel.isClosed()){
 			try {
-				client.stop();
-			} catch (Throwable t) {
-				throw new MojoExecutionException(t, t.getMessage(), t.toString());
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				getLog().error(e);
 			}
 		}
-	}
 
-	private void setupAgent(String user, File keyFile, SshClient client) {
-		final URL builtInPrivateKey = KarafClientMojo.class.getClassLoader().getResource("karaf.key");
-		final SshAgent agent = startAgent(user, builtInPrivateKey, keyFile);
-		client.setAgentFactory(new LocalAgentFactory(agent));
-		client.getProperties().put(SshAgent.SSH_AUTHSOCKET_ENV_NAME, "local");
-	}
+		sout.writeTo(System.out);
+		serr.writeTo(System.err);
 
-	private SshAgent startAgent(String user, URL privateKeyUrl, File keyFile) {
-		try (InputStream is = privateKeyUrl.openStream()) {
-			final SshAgent agent = new AgentImpl();
-			final ObjectInputStream r = new ObjectInputStream(is);
-			final KeyPair keyPair = (KeyPair) r.readObject();
-			is.close();
-			agent.addIdentity(keyPair, user);
-			if (keyFile != null) {
-				final String[] keyFiles = new String[] {keyFile.getAbsolutePath()};
-				final FileKeyPairProvider fileKeyPairProvider = new FileKeyPairProvider(keyFiles);
-				for (KeyPair key : fileKeyPairProvider.loadKeys()) {
-					agent.addIdentity(key, user);
-				}
+		if (channel.getExitStatus() != 0) {
+			final String errorMarker = Ansi.ansi().fg(Ansi.Color.RED).toString();
+			final int start = sout.toString().indexOf(errorMarker);
+			final int fromIndex = start == (-1) ? (-1) : start + errorMarker.length();
+			final int toIndex = sout.toString().lastIndexOf(Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
+
+			if(fromIndex != (-1) && toIndex != (-1) ){
+				throw new MojoExecutionException(NEW_LINE +  sout.toString().substring(fromIndex, toIndex));
 			}
-			return agent;
-		} catch (Throwable e) {
-			getLog().error("Error starting ssh agent for: " + e.getMessage(), e);
-			return null;
+			else{
+				throw new MojoExecutionException(NEW_LINE + sout.toString());
+			}
 		}
+
+		getLog().info("exit-status code: " + channel.getExitStatus());
+		channel.disconnect();
 	}
 
-	private ClientSession connect(SshClient client) throws IOException, InterruptedException {
+	private Session connect() throws InterruptedException, JSchException {
 		int retries = 0;
-		ClientSession session = null;
+		JSch jsch = new JSch();
+
+		// set keyFile identity
+		if (keyFile != null) {
+			jsch.addIdentity(keyFile.getAbsolutePath());
+		}
+
+		java.util.Properties config = new java.util.Properties();
+		config.put("StrictHostKeyChecking", strictHostKeyChecking);
+
+		Session s = null;
 		do {
-			final ConnectFuture future = client.connect(user, host, port);
-			future.await();
 			try {
-				session = future.getSession();
-			} catch (RuntimeSshException ex) {
+				s = jsch.getSession(user, host, port);
+				if (password != null) {
+					s.setPassword(password);
+				}
+
+				s.setConfig(config);
+				s.connect();
+			} catch (JSchException ex) {
 				if (retries++ < attempts) {
 					Thread.sleep(TimeUnit.SECONDS.toMillis(delay));
 					getLog().info("retrying (attempt " + retries + ") ...");
@@ -282,7 +244,7 @@ public class KarafClientMojo extends AbstractMojo {
 					throw ex;
 				}
 			}
-		} while (session == null);
-		return session;
+		} while (s == null || !s.isConnected());
+		return s;
 	}
 }

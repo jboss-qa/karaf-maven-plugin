@@ -24,6 +24,29 @@
 	<packaging>maven-plugin</packaging>
 
 	<name>karaf-maven-plugin Maven Plugin</name>
+	<description>This maven plugin can execute OSGi commands via ssh client.</description>
+	<url>https://github.com/jboss-qa/karaf-maven-plugin</url>
+
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<scm>
+		<url>https://github.com/jboss-qa/karaf-maven-plugin</url>
+		<connection>scm:git:git://github.com/jboss-qa/karaf-maven-plugin.git</connection>
+		<developerConnection>scm:git:git@github.com:jboss-qa/karaf-maven-plugin.git</developerConnection>
+		<tag>v1.1.0</tag>
+	</scm>
+
+	<developers>
+		<developer>
+			<name>jboss-qa</name>
+		</developer>
+	</developers>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -148,16 +171,23 @@
 
 	<pluginRepositories>
 		<pluginRepository>
-			<id>jboss-soa-qa-maven-repository</id>
-			<url>http://dl.bintray.com/jboss-soa-qa/maven/</url>
+			<id>jboss-public-repository-group</id>
+			<name>JBoss Public Repository Group</name>
+			<url>http://repository.jboss.org/nexus/content/groups/public/</url>
 		</pluginRepository>
 	</pluginRepositories>
 
 	<distributionManagement>
 		<repository>
-			<id>bintray-jboss-soa-qa-maven-karaf-maven-plugin</id>
-			<name>jboss-soa-qa-maven-karaf-maven-plugin</name>
-			<url>https://api.bintray.com/maven/jboss-soa-qa/maven/karaf-maven-plugin</url>
+			<id>jboss-releases-repository</id>
+			<name>JBoss Releases Repository</name>
+			<url>https://repository.jboss.org/nexus/service/local/staging/deploy/maven2</url>
 		</repository>
+		<snapshotRepository>
+			<id>jboss-snapshots-repository</id>
+			<name>JBoss Snapshots Repository</name>
+			<url>https://repository.jboss.org/nexus/content/repositories/snapshots</url>
+		</snapshotRepository>
 	</distributionManagement>
+	
 </project>
